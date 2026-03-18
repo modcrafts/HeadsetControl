@@ -30,6 +30,8 @@
 // HyperX devices
 #include "devices/hyperx_cloud_2_wireless.hpp"
 #include "devices/hyperx_cloud_3.hpp"
+#include "devices/hyperx_cloud_3_wireless.hpp"
+#include "devices/hyperx_cloud_3_s_wireless.hpp"
 #include "devices/hyperx_cloud_alpha_wireless.hpp"
 #include "devices/hyperx_cloud_flight.hpp"
 
@@ -116,6 +118,8 @@ void DeviceRegistry::initialize()
         registerDevice(std::make_unique<HyperXCloudFlight>());
         registerDevice(std::make_unique<HyperXCloud2Wireless>());
         registerDevice(std::make_unique<HyperXCloud3>());
+        registerDevice(std::make_unique<HyperXCloudIIIWireless>());
+        registerDevice(std::make_unique<HyperXCloudIIISWireless>());
 
         // Roccat devices
         registerDevice(std::make_unique<RoccatElo71Air>());
