@@ -319,6 +319,21 @@ struct DevOptions {
 
 [[nodiscard]] bool send_data(hid_device* dev, std::span<const uint8_t> data)
 {
+#ifdef _WIN32
+#if defined(HID_API_VERSION) && (HID_API_VERSION >= HID_API_MAKE_VERSION(0, 15, 0))
+    {
+        int ret = hid_send_output_report(dev, data.data(), data.size());
+        if (ret >= 0) {
+            return true;
+        }
+
+        std::cerr << std::format(
+            "hid_send_output_report failed, falling back to hid_write: {}\n",
+            headsetcontrol::wstring_to_string(hid_error(dev)));
+    }
+#endif
+#endif
+
     if (hid_write(dev, data.data(), data.size()) < 0) {
         std::cerr << std::format("Failed to send: {}\n",
             headsetcontrol::wstring_to_string(hid_error(dev)));
@@ -414,6 +429,10 @@ int dev_main(int argc, char* argv[])
         std::cerr << "Warning: both --receive and --receive-feature specified\n";
     }
 
+    std::cerr << std::format("Opening HID path: {}\n", *hid_path);
+    std::cerr << std::format("Interface={} UsagePage={:#06x} UsageID={:#06x}\n",
+        opts->interfaceid, opts->usagepage, opts->usageid);
+
     HIDDevicePtr device { hid_open_path(hid_path->c_str()) };
     if (!device) {
         std::cerr << "Failed to open device\n";
@@ -424,8 +443,11 @@ int dev_main(int argc, char* argv[])
     std::vector<uint8_t> buffer(BUFFER_SIZE);
 
     do {
-        if (!opts->send_data.empty() && !send_data(device.get(), opts->send_data)) {
-            return 1;
+        if (!opts->send_data.empty()) {
+            std::cerr << std::format("Sending {} bytes\n", opts->send_data.size());
+            if (!send_data(device.get(), opts->send_data)) {
+                return 1;
+            }
         }
 
         if (!opts->send_feature_data.empty() && !send_feature_report(device.get(), opts->send_feature_data)) {
