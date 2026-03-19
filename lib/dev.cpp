@@ -66,6 +66,25 @@ int check_range(int number, int low, int high)
     return 0;
 }
 
+static int send_output_report_compat(hid_device* device_handle,
+    const unsigned char* buffer,
+    size_t len)
+{
+#ifdef _WIN32
+#if defined(HID_API_VERSION) && (HID_API_VERSION >= HID_API_MAKE_VERSION(0, 15, 0))
+    {
+        int ret = hid_send_output_report(device_handle, buffer, len);
+        if (ret >= 0) {
+            return ret;
+        }
+        // fallback to hid_write() below
+    }
+#endif
+#endif
+
+    return hid_write(device_handle, buffer, len);
+}
+
 static void print_help()
 {
     printf("HeadsetControl Developer menu. Take caution.\n\n");
@@ -339,6 +358,10 @@ int dev_main(int argc, char* argv[])
         fprintf(stderr, "Warning: --receive and --receive-feature specified at the same time\n");
     }
 
+    fprintf(stderr, "Opening HID path: %s\n", hid_path);
+    fprintf(stderr, "Interface=%d UsagePage=0x%04x UsageID=0x%04x\n",
+        interfaceid, usagepage, usageid);
+
     device_handle = hid_open_path(hid_path);
     if (device_handle == nullptr) {
         fprintf(stderr, "Couldn't open device.\n");
@@ -348,7 +371,7 @@ int dev_main(int argc, char* argv[])
 
     do {
         if (send) {
-            int ret = hid_write(device_handle, sendbuffer, send);
+            int ret = send_output_report_compat(device_handle, sendbuffer, static_cast<size_t>(send));
 
             if (ret < 0) {
                 fprintf(stderr, "Failed to send data. Error: %d: %ls\n", ret, hid_error(device_handle));
